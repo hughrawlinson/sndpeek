@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <script type="text/javascript" src="lib/jsfft/complex_array.js"></script>
+    <script type="text/javascript" src="lib/jsfft/fft.js"></script>
+    <script type="text/javascript" src="meyda.js"></script>
+    <style type="text/css">
+      /*#main,body,html{
+        width:100%;
+        height:100%;
+      }*/
+      body{
+        /*margin:0px;*/
+        background-color:#000;
+      }
+      html, body {
+        width:  100%;
+        height: 100%;
+        margin: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="main"></canvas>
+    <script type="text/javascript">
+      // Polyfilla
+      navigator.getUserMedia = (navigator.getUserMedia ||
+                          navigator.webkitGetUserMedia ||
+                          navigator.mozGetUserMedia ||
+                          navigator.msGetUserMedia);
+      window.AudioContext = window.AudioContext||window.webkitAudioContext;
+
+      // Actual code starts
+      var ac = new AudioContext();
+
+      function backingScale(context) {
+        if ('devicePixelRatio' in window) {
+          if (window.devicePixelRatio > 1) {
+            return window.devicePixelRatio;
+          }
+        }
+        return 1;
+      }
+      var scaleFactor = backingScale(ctx)
+
+      var c = document.getElementById("main");
+      var ctx = c.getContext("2d");
+      ctx.canvas.width  = window.innerWidth * scaleFactor;
+      ctx.canvas.height = window.innerHeight * scaleFactor;
+      ctx.font = "bold 16px Arial";
+      ctx.fillStyle = "#FFF";
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#FFF';
+      
+      if (navigator.getUserMedia) {
+        navigator.getUserMedia (
+          {
+            audio: true
+          },
+          function(stream) {
+            var source = ac.createMediaStreamSource(stream);
+            var m = new Meyda(ac,source,512);
+            setTimeout(function(){
+              function draw(){
+                ctx.clearRect(0, 0, c.width, c.height);
+                requestAnimationFrame(draw);
+                var features = m.get(['spectralCentroid','buffer','complexSpectrum', 'amplitudeSpectrum']);
+                var hannedBuffer = m.hanning(features.buffer);
+                ctx.beginPath();
+                ctx.moveTo(200, 500);
+                for(var bin = 0; bin < features.complexSpectrum.real.length; bin++){
+                  if(bin<features.amplitudeSpectrum.length){
+                    ctx.fillRect(200+bin,400-10*features.amplitudeSpectrum[bin],1,1);
+                  }
+                  ctx.fillRect(200+bin,200+100*hannedBuffer[bin],1,1);
+                  ctx.lineTo(200+5*features.complexSpectrum.imag[bin],500+5*features.complexSpectrum.real[bin]);
+                }
+                ctx.stroke();
+                ctx.fillText("Centroid: "+features.spectralCentroid*44100/512, 10, 25);
+              }
+              draw();
+            },1000);
+          },
+          // errorCallback
+          function(err) {
+            console.log(err);
+          }
+        );
+      } else {
+        console.log("getUserMedia not supported");
+      }
+    </script>
+  </body>
+</html>
