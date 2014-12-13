@@ -14,7 +14,7 @@
         /*margin:0px;*/
         background-color:#000;
       }
-      html, body {
+      #main,html, body {
         width:  100%;
         height: 100%;
         margin: 0px;
@@ -46,12 +46,30 @@
 
       var c = document.getElementById("main");
       var ctx = c.getContext("2d");
-      ctx.canvas.width  = window.innerWidth * scaleFactor;
-      ctx.canvas.height = window.innerHeight * scaleFactor;
+      // ctx.scale(2,2);
+      if (scaleFactor > 1) {
+        c.width = c.width * scaleFactor;
+        c.height = c.height * scaleFactor;
+        // update the context for the new cvas scale
+        var ctx = c.getContext("2d");
+      }
       ctx.font = "bold 16px Arial";
       ctx.fillStyle = "#FFF";
       ctx.lineWidth = 1;
       ctx.strokeStyle = '#FFF';
+      var spectrumLength = 256;
+      var spectracount = 100;
+
+      var previousAmplitudeSpectra = [];
+      var previousSpectralCentroids = [];
+
+      for(var i = 0; i < spectracount; i++){
+        previousAmplitudeSpectra[i] = [];
+        previousSpectralCentroids[i] = 0;
+        for(var j = 0; j < spectrumLength; j++){
+          previousAmplitudeSpectra[i][j] = 0;
+        }
+      }
       
       if (navigator.getUserMedia) {
         navigator.getUserMedia (
@@ -60,24 +78,33 @@
           },
           function(stream) {
             var source = ac.createMediaStreamSource(stream);
-            var m = new Meyda(ac,source,512);
+            var m = new Meyda(ac,source,spectrumLength);
             setTimeout(function(){
               function draw(){
                 ctx.clearRect(0, 0, c.width, c.height);
                 requestAnimationFrame(draw);
                 var features = m.get(['spectralCentroid','buffer','complexSpectrum', 'amplitudeSpectrum']);
                 var hannedBuffer = m.hanning(features.buffer);
-                ctx.beginPath();
-                ctx.moveTo(200, 500);
+                for (var i = previousAmplitudeSpectra.length - 1; i > 0; i--) {
+                  previousAmplitudeSpectra[i] = previousAmplitudeSpectra[i-1];
+                  previousSpectralCentroids[i] = previousSpectralCentroids[i-1];
+                };
+                previousAmplitudeSpectra[0] = features.amplitudeSpectrum;
+                previousSpectralCentroids[0] = features.spectralCentroid;
                 for(var bin = 0; bin < features.complexSpectrum.real.length; bin++){
+                  ctx.fillStyle = "#888";
                   if(bin<features.amplitudeSpectrum.length){
-                    ctx.fillRect(200+bin,400-10*features.amplitudeSpectrum[bin],1,1);
+                    // Amplitude Spectrum Plot
+                    for(var i = 0; i < spectracount; i++){
+                      Math.round(previousSpectralCentroids[i])===bin?ctx.fillStyle="#F00":ctx.fillStyle="#888";
+                      ctx.fillRect(bin/spectrumLength*ctx.canvas.width*2,ctx.canvas.height-1-i*3-20*previousAmplitudeSpectra[i][bin],1,1);
+                    }
                   }
-                  ctx.fillRect(200+bin,200+100*hannedBuffer[bin],1,1);
-                  ctx.lineTo(200+5*features.complexSpectrum.imag[bin],500+5*features.complexSpectrum.real[bin]);
+                  // Buffer Plot
+                  ctx.fillStyle = "#FFF";
+                  ctx.fillRect(bin/spectrumLength*ctx.canvas.width,ctx.canvas.height/2+100*hannedBuffer[bin],1,1);
                 }
-                ctx.stroke();
-                ctx.fillText("Centroid: "+features.spectralCentroid*44100/512, 10, 25);
+
               }
               draw();
             },1000);
