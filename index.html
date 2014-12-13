@@ -14,7 +14,7 @@
         /*margin:0px;*/
         background-color:#000;
       }
-      #main,html, body {
+      html, body {
         width:  100%;
         height: 100%;
         margin: 0px;
@@ -57,7 +57,7 @@
       ctx.fillStyle = "#FFF";
       ctx.lineWidth = 1;
       ctx.strokeStyle = '#FFF';
-      var spectrumLength = 256;
+      var spectrumLength = 512;
       var spectracount = 100;
 
       var previousAmplitudeSpectra = [];
@@ -91,20 +91,24 @@
                 };
                 previousAmplitudeSpectra[0] = features.amplitudeSpectrum;
                 previousSpectralCentroids[0] = features.spectralCentroid;
+                ctx.beginPath();
+                ctx.moveTo(0,ctx.canvas.height/2);
+                ctx.fillStyle = "#FFF";
                 for(var bin = 0; bin < features.complexSpectrum.real.length; bin++){
-                  ctx.fillStyle = "#888";
-                  if(bin<features.amplitudeSpectrum.length){
-                    // Amplitude Spectrum Plot
-                    for(var i = 0; i < spectracount; i++){
-                      Math.round(previousSpectralCentroids[i])===bin?ctx.fillStyle="#F00":ctx.fillStyle="#888";
-                      ctx.fillRect(bin/spectrumLength*ctx.canvas.width*2,ctx.canvas.height-1-i*3-20*previousAmplitudeSpectra[i][bin],1,1);
-                    }
-                  }
                   // Buffer Plot
-                  ctx.fillStyle = "#FFF";
-                  ctx.fillRect(bin/spectrumLength*ctx.canvas.width,ctx.canvas.height/2+100*hannedBuffer[bin],1,1);
+                  ctx.lineTo(bin/spectrumLength*ctx.canvas.width,ctx.canvas.height/2+100*hannedBuffer[bin],1,1);
                 }
-
+                ctx.stroke();
+                ctx.strokeStyle = "#888";
+                for(var i = 0; i < spectracount; i++){
+                  ctx.beginPath();
+                  ctx.moveTo(0,ctx.canvas.height/2);
+                  // Amplitude Spectrum Plot
+                  for(var bin = 0; bin < features.amplitudeSpectrum.length; bin++){
+                    ctx.lineTo(bin*3,ctx.canvas.height-1-i*3-20*previousAmplitudeSpectra[i][bin],1,1);
+                  }
+                  ctx.stroke();
+                }
               }
               draw();
             },1000);
